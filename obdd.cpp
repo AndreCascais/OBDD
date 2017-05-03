@@ -8,247 +8,300 @@
 
 // global input file
 FILE * fp;
+FILE * of;
 
 using namespace std;
 
 struct Node {
-    char var;
-    int label;
-    Node* left;
-    Node* right;
+  char var;
+  int label;
+  Node* left;
+  Node* right;
+  int visited;
 };
 
 void print_node(Node* node) {
-    printf("My var is %c, my label is %d\n", node->var, node->label);
-    if (node->left == NULL) {
-        printf("Fim\n");
-        return;
-    }
-    else if (node->right == NULL)
-        printf("Pois\n");
+  printf("My var is %c, my label is %d\n", node->var, node->label);
+  if (node->left == NULL) {
+    printf("Fim\n");
+    return;
+  }
+  else if (node->right == NULL)
+    printf("Pois\n");
 }
 
 class Btree {
 public:
-    Btree(int n, char* v);
-    ~Btree();
-    void destroy_tree();
-    void make_tree();
-    void iterate_tree();
-    void reduce();
+  Btree(int n, char* v);
+  ~Btree();
+  void destroy_tree();
+  void make_tree();
+  void iterate_tree();
+  void reduce();
+  void print_obdd();
 
 private:
-    void destroy_tree(Node* node);
-    void make_tree(int depth, Node* node);
-    void delete_node(Node* node);
-    int get_label(Node* left, Node* right);
-    void label_tree(Node* node);
-    void reduce(Node* node);
+  void destroy_tree(Node* node);
+  void make_tree(int depth, Node* node);
+  void delete_node(Node* node);
+  int get_label(Node* left, Node* right);
+  void label_tree(Node* node);
+  void reduce(Node* node);
+  void print_obdd(Node *node);
 
-    Node* root;
-    int n_vars;
-    char* vars;
-    int next_label;
-    std::map<std::pair<int, int>, int> label_map; // Map to find a label given left and right ones
-    std::map<int, Node*> node_map; // For each label associeates a single node
+  Node* root;
+  int n_vars;
+  char* vars;
+  int next_label;
+  std::map<std::pair<int, int>, int> label_map; // Map to find a label given left and right ones
+  std::map<int, Node*> node_map; // For each label associeates a single node
 };
 
 Btree::Btree(int n, char* v) {
-    root = NULL;
-    n_vars = n;
-    vars = (char*) malloc (n_vars * sizeof(char));
-    strcpy(vars, v);
-    next_label = 2;
+  root = NULL;
+  n_vars = n;
+  vars = (char*) malloc (n_vars * sizeof(char));
+  strcpy(vars, v);
+  next_label = 2;
 
-    Node* node_0 = new Node;
-    Node* node_1 = new Node;
+  Node* node_0 = new Node;
+  Node* node_1 = new Node;
 
-    node_0->left = NULL;
-    node_0->right = NULL;
-    node_0->label = 0;
+  node_0->left = NULL;
+  node_0->right = NULL;
+  node_0->label = 0;
 
-    node_1->left = NULL;
-    node_1->right = NULL;
-    node_1->label = 1;
+  node_1->left = NULL;
+  node_1->right = NULL;
+  node_1->label = 1;
 
-    node_map[0] = node_0;
-    node_map[1] = node_1;
+  node_map[0] = node_0;
+  node_map[1] = node_1;
 }
 
 Btree::~Btree() {
-    destroy_tree();
+  destroy_tree();
 }
 
 void Btree::destroy_tree() {
-    destroy_tree(root);
+  destroy_tree(root);
 }
 
 void Btree::destroy_tree(Node* node) {
 
-    if(node != NULL) {
-        destroy_tree(node->left);
-        destroy_tree(node->right);
-        delete node;
-    }
+  if(node != NULL) {
+    destroy_tree(node->left);
+    destroy_tree(node->right);
+    delete node;
+  }
 }
 
 void Btree::make_tree() {
 
-    make_tree(1, NULL);
+  make_tree(1, NULL);
 }
 
 void Btree::make_tree(int depth, Node* node) {
 
-    if (depth == 1) {
-        root = new Node;
-        node = root;
-    }
+  if (depth == 1) {
+    root = new Node;
+    node = root;
+  }
 
-    node->left = new Node;
-    node->right = new Node;
-    node->var = vars[depth - 1];
+  node->left = new Node;
+  node->right = new Node;
+  node->var = vars[depth - 1];
+  node->visited = 0;
+  // printf("%c\n");
+  if (depth == n_vars) {
 
-    if (depth == n_vars) {
+    node->left->left = NULL;
+    node->left->right = NULL;
+    fscanf(fp, "%d", &node->left->label);
+    //node->left->var = '0' + node->left->label; // Just for debug
 
-        node->left->left = NULL;
-        node->left->right = NULL;
-        fscanf(fp, "%d", &node->left->label);
-        //node->left->var = '0' + node->left->label; // Just for debug
+    node->right->left = NULL;
+    node->right->right = NULL;
+    fscanf(fp, "%d", &node->right->label);
+    //node->right->var = '0' + node->right->label; // Just for debug
+    return;
+  }
 
-        node->right->left = NULL;
-        node->right->right = NULL;
-        fscanf(fp, "%d", &node->right->label);
-        //node->right->var = '0' + node->right->label; // Just for debug
-        return;
-    }
-
-    make_tree(depth + 1, node->left);
-    make_tree(depth + 1, node->right);
+  make_tree(depth + 1, node->left);
+  make_tree(depth + 1, node->right);
 
 }
 
 void Btree::iterate_tree() {
-    Node* n = root;
+  Node* n = root;
 
-    printf("l - left\n");
-    printf("r - right\n");
-    printf("root - root\n");
+  printf("l - left\n");
+  printf("r - right\n");
+  printf("root - root\n");
 
-    char s[10];
-    while (1) {
+  char s[10];
+  while (1) {
 
-        printf("My var is %c, my label is %d\n", n->var, n->label);
-        scanf("%s", s);
+    printf("My var is %c, my label is %d\n", n->var, n->label);
+    scanf("%s", s);
 
-        if (strcmp(s, "l") == 0) {
-            if (n->left == NULL)
-                printf("Not going to NULL Node\n");
-            else
-                n = n->left;
-        }
-        else if (strcmp(s, "r") == 0) {
-            if (n->right == NULL)
-                printf("Not going to NULL Node\n");
-            else
-                n = n->right;
-        }
-        else if (strcmp(s, "root") == 0) {
-            n = root;
-        }
-        else
-            printf("Unknown cmd\n");
+    if (strcmp(s, "l") == 0) {
+      if (n->left == NULL)
+	printf("Not going to NULL Node\n");
+      else
+	n = n->left;
     }
+    else if (strcmp(s, "r") == 0) {
+      if (n->right == NULL)
+	printf("Not going to NULL Node\n");
+      else
+	n = n->right;
+    }
+    else if (strcmp(s, "root") == 0) {
+      n = root;
+    }
+    else
+      printf("Unknown cmd\n");
+  }
 }
 
 void Btree::label_tree(Node *node) {
 
-    if (node->left != NULL) { // Still have stuff to label
+  if (node->left != NULL) { // Still have stuff to label
 
-        if (node->left->left != NULL) { // Next is not terminal
-            label_tree(node->left);
-            label_tree(node->right);
-        }
-        node->label = get_label(node->left, node->right);
+    if (node->left->left != NULL) { // Next is not terminal
+      label_tree(node->left);
+      label_tree(node->right);
     }
+    node->label = get_label(node->left, node->right);
+  }
 }
 
 int Btree::get_label(Node *left, Node*right) {
 
-    std::pair<int, int> label_pair = std::make_pair(left->label, right->label);
-    if (left->label == right->label)
-        return left->label;
-    if (label_map.count(label_pair) == 0) {
-        label_map[label_pair] = next_label;
-        return next_label++;
-    }
-    else
-        return label_map[label_pair];
+  std::pair<int, int> label_pair = std::make_pair(left->label, right->label);
+  if (left->label == right->label)
+    return left->label;
+  if (label_map.count(label_pair) == 0) {
+    label_map[label_pair] = next_label;
+    return next_label++;
+  }
+  else
+    return label_map[label_pair];
 
 }
 
 void Btree::reduce() {
-    label_tree(root);
-    reduce(root);
+  label_tree(root);
+  reduce(root);
 }
 
 void Btree::reduce(Node *node) { // Assumes labeled obdd
 
-    if (node->left == NULL)// At a leaf
-        return;
+  if (node->left == NULL)// At a leaf
+    return;
 
-    while(node->left->label == node->right->label) {
-        destroy_tree(node->right);
-        delete_node(node);
-        if (node->left == NULL) // Reached a leaf
-            return;
-    }
+  while(node->left->label == node->right->label) {
+    destroy_tree(node->right);
+    delete_node(node);
+    if (node->left == NULL) // Reached a leaf
+      return;
+  }
 
-    if (node_map.count(node->label) == 0) // Label isnt maped to a node yet
-        node_map[node->label] = node;
+  if (node_map.count(node->label) == 0) // Label isnt maped to a node yet
+    node_map[node->label] = node;
 
-    if (node_map.count(node->left->label) != 0) { // Left label is already maped to a node
-        int label = node->left->label;
-        destroy_tree(node->left);
-        node->left = node_map[label];
-    }
+  if (node_map.count(node->left->label) != 0) { // Left label is already maped to a node
+    int label = node->left->label;
+    destroy_tree(node->left);
+    node->left = node_map[label];
+  }
 
-    else
-        reduce(node->left);
+  else
+    reduce(node->left);
 
-    if (node_map.count(node->right->label) != 0) { // Right label is already maped to a node
-        int label = node->right->label;
-        destroy_tree(node->right);
-        node->right = node_map[label];
-    }
+  if (node_map.count(node->right->label) != 0) { // Right label is already maped to a node
+    int label = node->right->label;
+    destroy_tree(node->right);
+    node->right = node_map[label];
+  }
 
-    else
-        reduce(node->right);
+  else
+    reduce(node->right);
 }
 
 void Btree::delete_node(Node* node) { // In this context deleting a node is copying the information from its left node
 
-    Node* node_aux = node->left;
+  Node* node_aux = node->left;
 
-    node->var = node_aux->var;
-    node->right = node_aux->right;
-    node->left = node_aux->left;
-    node->label = node_aux->label;
+  node->var = node_aux->var;
+  node->right = node_aux->right;
+  node->left = node_aux->left;
+  node->label = node_aux->label;
 
-    free(node_aux);
+  free(node_aux);
 }
+
+// graphviz part
+
+void Btree::print_obdd(){
+  fprintf(of, "digraph {\n");
+  print_obdd(root);
+  fprintf(of, "}");
+  fclose(of);
+  return;
+}
+
+void Btree::print_obdd(Node *n){
+  //print to outputfile an edge from n to left and from n to right in .dot format
+  n -> visited++;
+  if(n -> left == NULL && n -> right == NULL){
+    return;
+  }
+  //printf("%c %c %c %d %d %d\n", n->var, n->left->var, n->right->var, n->label, n->left->label, n->right->label);
+  if(n -> visited < 2){
+    if(n -> left -> var != NULL){
+      
+      fprintf(of, "{%d[label=\"%c\"]} -> {%d[label=\"%c\"]}[style=\"dashed\"]\n", n -> label, n -> var, n -> left -> label, n -> left -> var);
+      print_obdd(n -> left);
+    }
+  
+    else{
+      fprintf(of, "{%d[label=\"%c\"]} -> {%d [shape=\"square\"]} [style=\"dashed\"]\n", n -> label, n -> var, n -> left -> label);
+    }
+  }
+  if(n->visited < 2){
+    if(n -> right -> var != NULL){
+    
+      fprintf(of, "{%d[label=\"%c\"]} -> {%d[label=\"%c\"]}\n", n -> label, n -> var, n -> right -> label, n -> right -> var);
+    
+      print_obdd(n -> right);
+    }
+  
+    else{
+      fprintf(of, "{%d[label=\"%c\"]} -> {%d [shape=\"square\"]}\n", n -> label, n -> var, n -> right -> label);
+    }
+  }
+  return;
+}
+
+// end of graphviz part
 
 int main(int argc, char** argv) {
 
-    fp = fopen(argv[1], "r+");
-    int n_vars;
-    fscanf(fp, "%d", &n_vars);
-    char* vars = (char*) malloc (n_vars * sizeof(char));
-    fscanf(fp, "%s", vars);
+  fp = fopen(argv[1], "r+");
+  int n_vars;
+  fscanf(fp, "%d", &n_vars);
+  char* vars = (char*) malloc (n_vars * sizeof(char));
+  fscanf(fp, "%s", vars);
 
-    Btree* obdd = new Btree(n_vars, vars);
-    obdd->make_tree();
-    obdd->reduce();
-    obdd->iterate_tree();
+  Btree* obdd = new Btree(n_vars, vars);
+  obdd->make_tree();
+  obdd->reduce();
+  //obdd->iterate_tree();
 
-    return 0;
+  of = fopen(argv[2], "w+");
+  obdd -> print_obdd();
+
+  return 0;
 }
