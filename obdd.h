@@ -12,6 +12,7 @@ using namespace std;
 struct Node {
     char var;
     int label;
+    int visited = 0;
     Node* left;
     Node* right;
 };
@@ -29,6 +30,7 @@ public:
     void make_OBDD();
     void iterate_OBDD();
     void reduce();
+    void print_obdd();
     void apply(std::function<int (int, int)> op, OBDD* f, OBDD* g);
 
     int n_vars;
@@ -42,11 +44,10 @@ private:
     int get_label(Node* left, Node* right);
     void label_OBDD(Node* node);
     void reduce(Node* node);
+    void print_obdd(Node* n);
     Node* apply(std::function<int (int, int)> op, Node* f, Node* g);
 
     Node* root;
     std::map<char, int> var_map; // Maps each var to a int according to the obbd order
-    int next_label;
-    std::map<std::pair<int, int>, int> label_map; // Map to find a label given left and right ones
     std::map<int, Node*> node_map; // For each label associeates a single node
 };

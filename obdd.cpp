@@ -3,8 +3,12 @@
 using namespace std;
 
 FILE * fp; // global input file
-File * of; // global output file
+FILE * of; // global output file
 std::map<string, OBDD*> obdd_map; // Maps an id into a OBDD (unique)
+std::map<string, std::function<int (int, int)>> function_map; // Map strings to functions
+std::map<std::pair<int, int>, int> label_map; // Map to find a label given left and right ones
+int next_label = 2;
+
 
 OBDD::OBDD(int n, char* v) {
     root = NULL;
@@ -19,18 +23,18 @@ OBDD::OBDD(int n, char* v) {
 
     var_map['\0'] = ++i;
 
-    next_label = 2;
-
     Node* node_0 = new Node;
     Node* node_1 = new Node;
 
     node_0->left = NULL;
     node_0->right = NULL;
     node_0->label = 0;
+    node_0->var = '\0';
 
     node_1->left = NULL;
     node_1->right = NULL;
     node_1->label = 1;
+    node_1->var = '\0';
 
     node_map[0] = node_0;
     node_map[1] = node_1;
@@ -201,45 +205,45 @@ void OBDD::delete_node(Node* node) { // In this context deleting a node is copyi
 
     free(node_aux);
 }
-void OBDD::print_obdd(){
-  fprintf(of, "digraph {\n");
-  print_obdd(root);
-  fprintf(of, "}");
-  fclose(of);
-  return;
+void OBDD::print_obdd() {
+    fprintf(of, "digraph {\n");
+    print_obdd(root);
+    fprintf(of, "}");
+    fclose(of);
+    return;
 }
 
 void OBDD::print_obdd(Node *n){
-  //print to outputfile an edge from n to left and from n to right in .dot format
-  n -> visited++;
-  if(n -> left == NULL && n -> right == NULL){
-    return;
-  }
-  //printf("%c %c %c %d %d %d\n", n->var, n->left->var, n->right->var, n->label, n->left->label, n->right->label);
-  if(n -> visited < 2){
-    if(n -> left -> var != NULL){
+    //print to outputfile an edge from n to left and from n to right in .dot format
+    n -> visited++;
+    if(n -> left == NULL && n -> right == NULL){
+        return;
+    }
+    //printf("%c %c %c %d %d %d\n", n->var, n->left->var, n->right->var, n->label, n->left->label, n->right->label);
+    if(n -> visited < 2){
+        if(n -> left -> var != '\0'){
       
-      fprintf(of, "{%d[label=\"%c\"]} -> {%d[label=\"%c\"]}[style=\"dashed\"]\n", n -> label, n -> var, n -> left -> label, n -> left -> var);
-      print_obdd(n -> left);
-    }
+            fprintf(of, "{%d[label=\"%c\"]} -> {%d[label=\"%c\"]}[style=\"dashed\"]\n", n -> label, n -> var, n -> left -> label, n -> left -> var);
+            print_obdd(n -> left);
+        }
   
-    else{
-      fprintf(of, "{%d[label=\"%c\"]} -> {%d [shape=\"square\"]} [style=\"dashed\"]\n", n -> label, n -> var, n -> left -> label);
+        else{
+            fprintf(of, "{%d[label=\"%c\"]} -> {%d [shape=\"square\"]} [style=\"dashed\"]\n", n -> label, n -> var, n -> left -> label);
+        }
     }
-  }
-  if(n->visited < 2){
-    if(n -> right -> var != NULL){
+    if(n->visited < 2){
+        if(n -> right -> var != '\0'){
     
-      fprintf(of, "{%d[label=\"%c\"]} -> {%d[label=\"%c\"]}\n", n -> label, n -> var, n -> right -> label, n -> right -> var);
+            fprintf(of, "{%d[label=\"%c\"]} -> {%d[label=\"%c\"]}\n", n -> label, n -> var, n -> right -> label, n -> right -> var);
     
-      print_obdd(n -> right);
-    }
+            print_obdd(n -> right);
+        }
   
-    else{
-      fprintf(of, "{%d[label=\"%c\"]} -> {%d [shape=\"square\"]}\n", n -> label, n -> var, n -> right -> label);
+        else{
+            fprintf(of, "{%d[label=\"%c\"]} -> {%d [shape=\"square\"]}\n", n -> label, n -> var, n -> right -> label);
+        }
     }
-  }
-  return;
+    return;
 }
 void OBDD::apply(std::function<int (int, int)> op, OBDD* f, OBDD* g) {
 
@@ -257,17 +261,12 @@ Node* OBDD::apply(std::function<int (int, int)> op, Node* f, Node* g) {
 
         int res = op(f->label, g->label);
 
-        if (res == 0)
-            node->label = 0;
-        else
-            node->label = 1;
+        node->label = res;
+        //node->var = '\0';
     }
 
-    else if (f->label == g->label) {
-        
-        if (node == NULL) {
-            printf("Node is null \n");
-        }
+    else if (f->var == g->var) {
+
         node->label = f->label;
         node->var = f->var;
         
@@ -276,11 +275,11 @@ Node* OBDD::apply(std::function<int (int, int)> op, Node* f, Node* g) {
     }
 
     else {
-
+        
         Node* high;
         Node* low;
 
-        if (var_map[f->label] > var_map[g->label]) {
+        if (var_map[f->var] > var_map[g->var]) {
             high = f;
             low = g;
         }
@@ -325,7 +324,7 @@ void run() {
     char const* help_msg = "help                       - shows this message\n"
         "list                       - lists available obdds\n"
         "new OBDD FILE              - creates a new obbd named OBDD from file FILE\n"
-        "show OBDD                  - prints obbd OBDD\n"
+        "show OBDD FILE             - creates .dot file for OBDD in file FILE\n"
         "reduce OBDD                - reduces obdd OBDD\n"
         "apply OP OBDD1 OBDD2 OBDD3 - apply(op, OBDD1, OBDD2) into OBDD3\n";
     
@@ -334,7 +333,6 @@ void run() {
     while(1) {
  
         fgets (cmd, 100, stdin);
-        printf("There are %d obdds\n", obdd_map.size());
 
         char* token = strtok(cmd, " \n");
 
@@ -376,13 +374,14 @@ void run() {
                 OBDD* obdd = new OBDD(n_vars, vars);
                 obdd->make_OBDD();
                 obdd_map[id] = obdd;
+                fclose(fp);
             }
 
             else
                 printf("Id already in use\n");
         }
         
-        else if (strcmp(token, "show") == 0) {
+        else if (strcmp(token, "iterate") == 0) {
             OBDD* obdd;
 
             token = strtok(NULL, " \n");
@@ -391,6 +390,18 @@ void run() {
             obdd = obdd_map[id];
             
             obdd->iterate_OBDD();
+        }
+
+        else if (strcmp(token, "show") == 0) {
+            OBDD* obdd;
+            
+            token = strtok(NULL, " \n");
+            string id(token);
+            token = strtok(NULL, " \n");
+            of = fopen(token, "w+");
+                
+            obdd = obdd_map[id];
+            obdd->print_obdd();
         }
 
         else if (strcmp(token, "reduce") == 0) {
@@ -404,7 +415,8 @@ void run() {
         
         else if (strcmp(token, "apply") == 0) {
 
-
+            token = strtok(NULL, " \n");
+            string op(token);
             token = strtok(NULL, " \n");
             string id1(token);
             token = strtok(NULL, " \n");
@@ -416,7 +428,7 @@ void run() {
             OBDD* obdd2 = obdd_map[id2];
             
             OBDD* obdd3 = new OBDD(obdd1->n_vars, obdd1->vars);
-            obdd3->apply(And, obdd1, obdd2);
+            obdd3->apply(function_map[op], obdd1, obdd2);
             obdd_map[id3] = obdd3;
         }
 
@@ -429,9 +441,9 @@ void run() {
 
 int main(int argc, char** argv) {
 
+    function_map["and"] = And;
+    function_map["or"] = Or;
     run();
-    // of = fopen(argv[2], "w+");
-    // obdd -> print_obdd();
 
     return 0;
 }
