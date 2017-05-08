@@ -1,2 +1,2 @@
 default:
-	g++ -Wall obdd.cpp -o obdd
+	g++ -std=c++11 -Wall obdd.cpp -o obdd
