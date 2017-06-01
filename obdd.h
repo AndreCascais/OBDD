@@ -3,7 +3,8 @@
 #include <string.h>
 #include <map>
 #include <functional>
-
+#include <unistd.h>
+#include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -21,6 +22,7 @@ void print_node(Node* node);
 bool is_leaf(Node* node);
 int And(int n1, int n2);
 int Or(int n1, int n2);
+char *remove_variable(char *vars, char *v);
 
 class OBDD {
 public:
@@ -31,6 +33,8 @@ public:
     void iterate_OBDD();
     void reduce();
     void print_obdd();
+    void launch_viewer(char *filename);
+    void make_partial_obdd(OBDD* o, int value, char* var);
     void apply(std::function<int (int, int)> op, OBDD* f, OBDD* g);
 
     int n_vars;
@@ -45,6 +49,7 @@ private:
     void label_OBDD(Node* node);
     void reduce(Node* node);
     void print_obdd(Node* n);
+    Node* make_partial_obdd(Node *n, int v, char c);
     Node* apply(std::function<int (int, int)> op, Node* f, Node* g);
 
     Node* root;
