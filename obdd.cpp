@@ -30,11 +30,13 @@ OBDD::OBDD(int n, char* v) {
   node_0->right = NULL;
   node_0->label = 0;
   node_0->var = '\0';
+  node_0->visited = 1;
 
   node_1->left = NULL;
   node_1->right = NULL;
   node_1->label = 1;
   node_1->var = '\0';
+  node_1->visited = 1;
 
   node_map[0] = node_0;
   node_map[1] = node_1;
@@ -46,11 +48,13 @@ OBDD::~OBDD() {
 
 void OBDD::destroy_OBDD() {
   destroy_OBDD(root);
+  delete node_map[0];
+  delete node_map[1];
 }
 
 void OBDD::destroy_OBDD(Node* node) {
 
-  if(node != NULL) {
+  if(node != NULL && node->needed == 0) {
     destroy_OBDD(node->left);
     destroy_OBDD(node->right);
     delete node;
@@ -138,6 +142,7 @@ void OBDD::label_OBDD(Node *node) {
       label_OBDD(node->right);
     }
     node->label = get_label(node->left, node->right);
+    node->needed = 0; // Useful reset tool for reduce
   }
 }
 
@@ -157,15 +162,21 @@ int OBDD::get_label(Node *left, Node*right) {
 
 void OBDD::reduce() {
   label_OBDD(root);
+  Node* node_0 = node_map[0];
+  Node* node_1 = node_map[1];
+  node_map.clear();
+  node_map[0] = node_0;
+  node_map[1] = node_1;
   reduce(root);
 }
 
 void OBDD::reduce(Node *node) { // Assumes labeled obdd
+  node->needed = 1;
 
   if (node->left == NULL)// At a leaf
     return;
 
-  while(node->left->label == node->right->label) {
+  while (node->left->label == node->right->label) {
     destroy_OBDD(node->right);
     delete_node(node);
     if (node->left == NULL) // Reached a leaf
@@ -405,6 +416,7 @@ void run() {
   char cmd[100];
   char const* help_msg = "help                       - shows this message\n"
     "list                       - lists available obdds\n"
+    "iterate OBDD               - iterates obbd named OBDD\n"
     "new OBDD FILE              - creates a new obbd named OBDD from file FILE\n"
     "show OBDD FILE             - creates .dot file for OBDD in file FILE\n"
     "reduce OBDD                - reduces obdd OBDD\n"

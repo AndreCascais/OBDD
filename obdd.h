@@ -14,6 +14,7 @@ struct Node {
     char var;
     int label;
     int visited = 0;
+    int needed = 0;
     Node* left;
     Node* right;
 };
