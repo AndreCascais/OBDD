@@ -14,7 +14,6 @@ struct Node {
     char var;
     int label;
     int visited = 0;
-    int needed = 0;
     Node* left;
     Node* right;
 };
@@ -37,6 +36,7 @@ public:
     void launch_viewer(char *filename);
     void make_partial_obdd(OBDD* o, int value, char* var);
     void apply(std::function<int (int, int)> op, OBDD* f, OBDD* g);
+    void clear_visited();
 
     int n_vars;
     char* vars;
@@ -52,6 +52,7 @@ private:
     void print_obdd(Node* n);
     Node* make_partial_obdd(Node *n, int v, char c);
     Node* apply(std::function<int (int, int)> op, Node* f, Node* g);
+    void clear_visited(Node* n);
 
     Node* root;
     std::map<char, int> var_map; // Maps each var to a int according to the obbd order
