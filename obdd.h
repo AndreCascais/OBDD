@@ -16,6 +16,7 @@ struct Node {
     int visited = 0;
     Node* left;
     Node* right;
+    int idx;
 };
 
 void print_node(Node* node);
